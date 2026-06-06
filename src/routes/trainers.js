@@ -57,6 +57,21 @@ export function createTrainersRouter(supabase) {
     }
   });
 
+  router.post('/', async (req, res, next) => {
+    try {
+      const body = TrainerSchema.parse(req.body);
+      const { data, error } = await supabase
+        .from('trainers')
+        .insert(body)
+        .select()
+        .single();
+      if (error) throw error;
+      res.status(201).json(data);
+    } catch (err) {
+      next(err);
+    }
+  });
+
   router.put('/:id', async (req, res, next) => {
     try {
       const body = TrainerSchema.partial().parse(req.body);

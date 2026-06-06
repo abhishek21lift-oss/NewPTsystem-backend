@@ -11,6 +11,7 @@ import { createPaymentsRouter } from './routes/payments.js';
 import { createSessionsRouter } from './routes/sessions.js';
 import { createAnalyticsRouter } from './routes/analytics.js';
 import { createPayoutsRouter } from './routes/payouts.js';
+import { createMembershipPlansRouter } from './routes/membership-plans.js';
 import { createAuthRouter } from './routes/auth.js';
 import { errorHandler } from './middleware/errorHandler.js';
 import { createSupabaseClient } from './lib/supabase.js';
@@ -44,6 +45,7 @@ app.use('/api/payments', createPaymentsRouter(supabase));
 app.use('/api/sessions', createSessionsRouter(supabase));
 app.use('/api/analytics', createAnalyticsRouter(supabase));
 app.use('/api/payouts', createPayoutsRouter(supabase));
+app.use('/api/membership-plans', createMembershipPlansRouter(supabase));
 
 app.get('/api/health', (_, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString(), version: '2.0.0' });
