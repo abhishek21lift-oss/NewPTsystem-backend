@@ -29,7 +29,7 @@ export function createAnalyticsRouter(supabase) {
           active_enrollments: activeEnrollments || 0,
           expired_enrollments: expiredEnrollments || 0,
           soon_enrollments: soonEnrollments || 0,
-          total_revenue: totalRevenue?.total_revenue || 0,
+          total_revenue: totalRevenue?.[0]?.total_revenue || 0,
         },
         monthly_revenue: monthlyRevenue || [],
         recent_activities: activities || [],

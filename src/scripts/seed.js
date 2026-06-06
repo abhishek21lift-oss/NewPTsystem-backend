@@ -126,10 +126,42 @@ async function seed() {
     { client: 'Vipul Vikram Singh', trainer: abh, plan: p1, total: 10000, start: '2026-02-26', end: '2026-03-26', status: 'expired' },
   ];
 
+  // Payment records matching v4 HTML masterClients paid amounts
+  const paymentMap = {
+    'Ajeet Yadav': 7000,
+    'Aman Verma': 25000,
+    'Aman Gupta': 20000,
+    'Amit Shukla': 25000,
+    'Ankush Thakur': 0,
+    'Arti Tripathi': 25000,
+    'Anjali Srivastava': 10000,
+    'Abhishek Sharma': 25000,
+    'Stuti Yadav': 28000,
+    'Shivang Swarnkar': 25000,
+    'Rahul Rathore': 10000,
+    'Jay Singh': 8000,
+    'Ankit Gupta': 25000,
+    'Renuka': 6000,
+    'Neetu Singh': 25000,
+    'Saurabh Singh': 25000,
+    'Neelam Singh': 10000,
+    'Tarang Gupta': 10000,
+    'Vaibhav': 9000,
+    'Ishan Tiwari': 25000,
+    'Ratnam Yadav': 25000,
+    'Deepak Rathore': 10000,
+    'Rashi Bhatia': 65000,
+    'Vipul Bhatia': 65000,
+    'Prince': 0,
+    'Vipul Vikram Singh': 5000,
+  };
+
+  const newEnrollments = [];
+
   for (const enr of enrollments) {
     const client = clients.find(c => c.full_name === enr.client);
     if (!client) continue;
-    const { data: enrollment } = await supabase.from('enrollments').insert({
+    const { data: enrollment, error: eErr } = await supabase.from('enrollments').insert({
       client_id: client.id,
       trainer_id: enr.trainer.id,
       plan_id: enr.plan.id,
@@ -138,6 +170,30 @@ async function seed() {
       end_date: enr.end,
       status: enr.status,
     }).select().single();
+
+    if (eErr) { console.error(`Enrollment error for ${enr.client}:`, eErr); continue; }
+
+    newEnrollments.push({ enrollment, trainer: enr.trainer, clientName: enr.client });
+
+    // Insert payment records matching v4 paid amounts
+    const paidAmount = paymentMap[enr.client] || 0;
+    if (paidAmount > 0) {
+      // Split into 1-2 payments for realism
+      const pay1 = Math.floor(paidAmount * 0.6);
+      const pay2 = paidAmount - pay1;
+      const start = new Date(enr.start);
+      const pay1Date = new Date(start.getTime() + 3 * 24 * 60 * 60 * 1000);
+      const pay2Date = new Date(start.getTime() + 30 * 24 * 60 * 60 * 1000);
+
+      const payments = [
+        { enrollment_id: enrollment.id, amount: pay1, paid_at: pay1Date.toISOString().split('T')[0], method: 'cash' },
+      ];
+      if (pay2 > 0) {
+        payments.push({ enrollment_id: enrollment.id, amount: pay2, paid_at: pay2Date.toISOString().split('T')[0], method: 'cash' });
+      }
+      const { error: pErr } = await supabase.from('payments').insert(payments);
+      if (pErr) console.error(`Payment error for ${enr.client}:`, pErr);
+    }
   }
 
   console.log(`✅ ${enrollments.length} enrollments inserted`);
@@ -156,6 +212,110 @@ async function seed() {
   ];
   await supabase.from('activities').insert(activities);
   console.log(`✅ ${activities.length} activities inserted`);
+
+  // ── Historical payments for revenue chart (May 2025 – Apr 2026) ──
+  // These use a dummy enrollment tied to the first trainer (Abhishek) plus
+  // additional payments on real enrollments to fill the revenueMonths curve.
+
+  // Historical months from v4 HTML (total: ~1,950,000 across 15 months)
+  const historicalMonths = [
+    { m: '2025-05-01', rev: 7000, trainer: abh },
+    { m: '2025-06-01', rev: 77333, trainer: abh },
+    { m: '2025-07-01', rev: 78667, trainer: abh },
+    { m: '2025-08-01', rev: 79667, trainer: abh },
+    { m: '2025-09-01', rev: 152000, trainer: abh },
+    { m: '2025-10-01', rev: 176667, trainer: abh },
+    { m: '2025-11-01', rev: 204333, trainer: abh },
+    { m: '2025-12-01', rev: 201333, trainer: abh },
+    { m: '2026-01-01', rev: 202500, trainer: abh },
+    { m: '2026-02-01', rev: 209167, trainer: abh },
+    { m: '2026-03-01', rev: 210500, trainer: abh },
+    { m: '2026-04-01', rev: 176167, trainer: abh },
+    { m: '2026-05-01', rev: 100500, trainer: abh },
+    { m: '2026-06-01', rev: 53833, trainer: abh },
+    { m: '2026-07-01', rev: 10833, trainer: abh },
+  ];
+
+  // Don't duplicate months that already have payments from current clients
+  // Current client payments cover roughly Apr-Jun 2026
+  const currentClientMonths = new Set(['2026-04-01', '2026-05-01', '2026-06-01', '2026-07-01']);
+
+  for (const hm of historicalMonths) {
+    if (currentClientMonths.has(hm.m)) continue;
+
+    const trainerEnrollments = newEnrollments.filter(e => e.trainer.id === hm.trainer.id);
+    if (trainerEnrollments.length === 0) continue;
+
+    const targets = trainerEnrollments.slice(0, Math.min(3, trainerEnrollments.length));
+    const perEnrollment = Math.floor(hm.rev / targets.length);
+
+    for (const te of targets) {
+      await supabase.from('payments').insert({
+        enrollment_id: te.enrollment.id,
+        amount: perEnrollment,
+        paid_at: hm.m,
+        method: 'cash',
+      });
+    }
+  }
+
+  console.log(`✅ Historical payments inserted`);
+
+  // ── Sessions data ──
+  const today = new Date();
+
+  const scheduleSlots = {
+    ABHISHEK: [
+      ['Ajeet Yadav', 0, 7], ['Ankush Thakur', 0, 8], ['Rahul Rathore', 0, 9], ['Shivang Swarnkar', 0, 10],
+      ['Ajeet Yadav', 2, 7], ['Ankush Thakur', 2, 8], ['Rahul Rathore', 2, 9], ['Shivang Swarnkar', 2, 10],
+      ['Ajeet Yadav', 4, 7], ['Ankush Thakur', 4, 8], ['Rahul Rathore', 4, 9], ['Shivang Swarnkar', 4, 10],
+    ],
+    RIYA: [
+      ['Neetu Singh', 1, 7], ['Saurabh Singh', 1, 8], ['Aman Verma', 1, 9], ['Tarang Gupta', 1, 10],
+      ['Neetu Singh', 3, 7], ['Saurabh Singh', 3, 8], ['Aman Verma', 3, 9], ['Tarang Gupta', 3, 10],
+      ['Neetu Singh', 5, 7], ['Saurabh Singh', 5, 8], ['Aman Verma', 5, 9], ['Tarang Gupta', 5, 10],
+    ],
+    RAJAT: [
+      ['Anjali Srivastava', 1, 7], ['Deepak Rathore', 1, 8], ['Stuti Yadav', 1, 9], ['Ratnam Yadav', 1, 10],
+      ['Anjali Srivastava', 3, 7], ['Deepak Rathore', 3, 8], ['Stuti Yadav', 3, 9], ['Ratnam Yadav', 3, 10],
+    ],
+  };
+
+  for (const [trainerCode, slots] of Object.entries(scheduleSlots)) {
+    const tid = trainers.find(t => t.short_code === trainerCode)?.id;
+    if (!tid) continue;
+    for (const [clientName, day, hour] of slots) {
+      const client = clients.find(c => c.full_name === clientName);
+      if (!client) continue;
+      const enr = newEnrollments.find(e => e.clientName === clientName);
+      if (!enr) continue;
+
+      const sessionDate = new Date(today);
+      sessionDate.setDate(today.getDate() + ((day + 7 - today.getDay()) % 7));
+      sessionDate.setHours(hour, 0, 0, 0);
+
+      await supabase.from('sessions').insert({
+        client_id: client.id,
+        trainer_id: tid,
+        enrollment_id: enr.enrollment.id,
+        scheduled_at: sessionDate.toISOString(),
+        status: 'scheduled',
+      }).catch(() => {});
+    }
+  }
+
+  console.log(`✅ Sessions inserted`);
+
+  // ── Notifications ──
+  const notifications = [
+    { title: 'Payment Due', body: 'Vaibhav has a pending balance of ₹20,000', icon: '💸', color: 'var(--red-muted)', is_read: false },
+    { title: 'Subscription Expiring', body: 'Renuka\'s 1-Month plan ends in 7 days', icon: '⏰', color: 'var(--orange-muted)', is_read: false },
+    { title: 'New Enrollment', body: 'Tarang Gupta joined 3-Month plan with Riya', icon: '🏋️', color: 'var(--green-muted)', is_read: false },
+    { title: 'Achievement Unlocked', body: 'Abhishek won Silver at UP State Powerlifting Championship', icon: '🥈', color: 'var(--blue-muted)', is_read: false },
+  ];
+
+  await supabase.from('notifications').insert(notifications);
+  console.log(`✅ ${notifications.length} notifications inserted`);
 
   console.log('\n🎉 Seed complete!');
 }
