@@ -14,7 +14,7 @@ export function createClientsRouter(supabase) {
 
   router.get('/', async (req, res, next) => {
     try {
-      const { search, gender, status, page = 1, limit = 50 } = req.query;
+      const { search, gender, status, page = 1, limit = 200 } = req.query;
       let query = supabase
         .from('clients')
         .select('*, enrollments!inner(*, membership_plans(*), trainers(*))', { count: 'exact' });
