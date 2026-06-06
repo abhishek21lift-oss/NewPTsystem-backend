@@ -22,8 +22,9 @@ const PORT = process.env.PORT || 3001;
 const supabase = createSupabaseClient();
 
 app.use(helmet());
+const corsOrigins = process.env.CORS_ORIGIN?.split(',') || ['http://localhost:5173', 'https://newptsystem-619-frontend.vercel.app'];
 app.use(cors({
-  origin: process.env.CORS_ORIGIN?.split(',') || 'http://localhost:5173',
+  origin: corsOrigins,
   credentials: true,
 }));
 app.use(morgan('dev'));
