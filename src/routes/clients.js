@@ -17,7 +17,7 @@ export function createClientsRouter(supabase) {
       const { search, gender, status, page = 1, limit = 200 } = req.query;
       let query = supabase
         .from('clients')
-        .select('*, enrollments!inner(*, membership_plans(*), trainers(*))', { count: 'exact' });
+        .select('*, enrollments!inner(*, membership_plans(*), trainers(*), payments(*))', { count: 'exact' });
 
       if (search) {
         query = query.or(`full_name.ilike.%${search}%,display_id.ilike.%${search}%`);
