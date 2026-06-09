@@ -7,6 +7,7 @@ const ClientSchema = z.object({
   phone: z.string().optional(),
   email: z.string().email().optional().nullable(),
   notes: z.string().optional(),
+  trainer_id: z.string().uuid().optional().nullable(),
 });
 
 export function createClientsRouter(supabase) {
