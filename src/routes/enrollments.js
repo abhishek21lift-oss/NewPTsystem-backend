@@ -64,7 +64,7 @@ export function createEnrollmentsRouter(supabase) {
         description: `${data.clients?.full_name} enrolled in ${data.membership_plans?.name} with ${data.trainers?.full_name}`,
         icon: '🏋️',
         color: 'var(--green-muted)',
-      }).catch(() => {});
+      }).select().then(() => {}).catch(() => {});
 
       res.status(201).json(data);
     } catch (err) {

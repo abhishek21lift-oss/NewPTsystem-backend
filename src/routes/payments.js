@@ -47,7 +47,7 @@ export function createPaymentsRouter(supabase) {
         description: `Payment of ₹${body.amount.toLocaleString('en-IN')} received`,
         icon: '💰',
         color: 'var(--green-muted)',
-      }).catch(() => {});
+      }).select().then(() => {}).catch(() => {});
 
       res.status(201).json(data);
     } catch (err) {
