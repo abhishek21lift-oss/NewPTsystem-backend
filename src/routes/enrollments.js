@@ -58,13 +58,13 @@ export function createEnrollmentsRouter(supabase) {
         .single();
       if (error) throw error;
 
-      await supabase.from('activities').insert({
+      supabase.from('activities').insert({
         actor_type: 'system',
         action: 'enrolled',
         description: `${data.clients?.full_name} enrolled in ${data.membership_plans?.name} with ${data.trainers?.full_name}`,
         icon: '🏋️',
         color: 'var(--green-muted)',
-      });
+      }).catch(() => {});
 
       res.status(201).json(data);
     } catch (err) {

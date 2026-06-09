@@ -3,36 +3,30 @@ import { Router } from 'express';
 export function createAnalyticsRouter(supabase) {
   const router = Router();
 
+  const safeQuery = async (fn) => { try { return await fn(); } catch { return { data: null, count: null }; } };
+
   router.get('/dashboard', async (req, res, next) => {
     try {
-      const [
-        { count: totalClients },
-        { count: activeEnrollments },
-        { count: expiredEnrollments },
-        { count: soonEnrollments },
-        { data: totalRevenue },
-        { data: monthlyRevenue },
-        { data: activities },
-      ] = await Promise.all([
-        supabase.from('clients').select('*', { count: 'exact', head: true }),
-        supabase.from('enrollments').select('*', { count: 'exact', head: true }).eq('status', 'active'),
-        supabase.from('enrollments').select('*', { count: 'exact', head: true }).eq('status', 'expired'),
-        supabase.from('enrollments').select('*', { count: 'exact', head: true }).eq('status', 'soon'),
-        supabase.rpc('get_total_revenue'),
-        supabase.rpc('get_monthly_revenue'),
-        supabase.from('activities').select('*').order('created_at', { ascending: false }).limit(10),
+      const [clientsRes, activeRes, expiredRes, soonRes, revenueRes, monthlyRes, activitiesRes] = await Promise.all([
+        safeQuery(() => supabase.from('clients').select('*', { count: 'exact', head: true })),
+        safeQuery(() => supabase.from('enrollments').select('*', { count: 'exact', head: true }).eq('status', 'active')),
+        safeQuery(() => supabase.from('enrollments').select('*', { count: 'exact', head: true }).eq('status', 'expired')),
+        safeQuery(() => supabase.from('enrollments').select('*', { count: 'exact', head: true }).eq('status', 'soon')),
+        safeQuery(() => supabase.rpc('get_total_revenue')),
+        safeQuery(() => supabase.rpc('get_monthly_revenue')),
+        safeQuery(() => supabase.from('activities').select('*').order('created_at', { ascending: false }).limit(10)),
       ]);
 
       res.json({
         stats: {
-          total_clients: totalClients || 0,
-          active_enrollments: activeEnrollments || 0,
-          expired_enrollments: expiredEnrollments || 0,
-          soon_enrollments: soonEnrollments || 0,
-          total_revenue: totalRevenue?.[0]?.total_revenue || 0,
+          total_clients: clientsRes?.count || 0,
+          active_enrollments: activeRes?.count || 0,
+          expired_enrollments: expiredRes?.count || 0,
+          soon_enrollments: soonRes?.count || 0,
+          total_revenue: revenueRes?.data?.[0]?.total_revenue || 0,
         },
-        monthly_revenue: monthlyRevenue || [],
-        recent_activities: activities || [],
+        monthly_revenue: monthlyRes?.data || [],
+        recent_activities: activitiesRes?.data || [],
       });
     } catch (err) {
       next(err);
@@ -43,6 +37,7 @@ export function createAnalyticsRouter(supabase) {
     try {
       const { months = 15 } = req.query;
       const { data, error } = await supabase.rpc('get_monthly_revenue', { p_months: Number(months) });
+      if (error?.code === 'PGRST202') return res.json([]);
       if (error) throw error;
       res.json(data);
     } catch (err) {
@@ -101,6 +96,7 @@ export function createAnalyticsRouter(supabase) {
   router.get('/gender-distribution', async (req, res, next) => {
     try {
       const { data, error } = await supabase.rpc('get_gender_distribution');
+      if (error?.code === 'PGRST202') return res.json([]);
       if (error) throw error;
       res.json(data);
     } catch (err) {

@@ -41,13 +41,13 @@ export function createPaymentsRouter(supabase) {
         .single();
       if (error) throw error;
 
-      await supabase.from('activities').insert({
+      supabase.from('activities').insert({
         actor_type: 'system',
         action: 'payment',
         description: `Payment of ₹${body.amount.toLocaleString('en-IN')} received`,
         icon: '💰',
         color: 'var(--green-muted)',
-      });
+      }).catch(() => {});
 
       res.status(201).json(data);
     } catch (err) {
@@ -61,6 +61,7 @@ export function createPaymentsRouter(supabase) {
   router.get('/outstanding', async (req, res, next) => {
     try {
       const { data, error } = await supabase.rpc('get_outstanding_balances');
+      if (error?.code === 'PGRST202') return res.json([]);
       if (error) throw error;
       res.json(data);
     } catch (err) {
