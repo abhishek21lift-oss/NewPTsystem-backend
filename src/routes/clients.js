@@ -17,8 +17,7 @@ export function createClientsRouter(supabase) {
       const { search, gender, status, page = 1, limit = 200 } = req.query;
       let query = supabase
         .from('clients')
-        .select('*, enrollments!inner(*, membership_plans(*), trainers(*), payments(*))', { count: 'exact' })
-        .is('deleted_at', null);
+        .select('*, enrollments!inner(*, membership_plans(*), trainers(*), payments(*))', { count: 'exact' });
 
       if (search) {
         query = query.or(`full_name.ilike.%${search}%,display_id.ilike.%${search}%`);
@@ -85,7 +84,6 @@ export function createClientsRouter(supabase) {
         .from('clients')
         .update(body)
         .eq('id', req.params.id)
-        .is('deleted_at', null)
         .select()
         .single();
       if (error) throw error;

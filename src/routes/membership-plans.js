@@ -18,7 +18,6 @@ export function createMembershipPlansRouter(supabase) {
       const { data, error } = await supabase
         .from('membership_plans')
         .select('*, enrollments(count)')
-        .is('deleted_at', null)
         .order('months_count');
       if (error) throw error;
       res.json(data);
@@ -33,7 +32,6 @@ export function createMembershipPlansRouter(supabase) {
         .from('membership_plans')
         .select('*')
         .eq('id', req.params.id)
-        .is('deleted_at', null)
         .single();
       if (error) throw error;
       res.json(data);
@@ -53,6 +51,9 @@ export function createMembershipPlansRouter(supabase) {
       if (error) throw error;
       res.status(201).json(data);
     } catch (err) {
+      if (err instanceof z.ZodError) {
+        return res.status(400).json({ error: 'Validation Error', details: err.errors });
+      }
       next(err);
     }
   });
@@ -64,12 +65,14 @@ export function createMembershipPlansRouter(supabase) {
         .from('membership_plans')
         .update(body)
         .eq('id', req.params.id)
-        .is('deleted_at', null)
         .select()
         .single();
       if (error) throw error;
       res.json(data);
     } catch (err) {
+      if (err instanceof z.ZodError) {
+        return res.status(400).json({ error: 'Validation Error', details: err.errors });
+      }
       next(err);
     }
   });
