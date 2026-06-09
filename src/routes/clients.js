@@ -58,8 +58,8 @@ export function createClientsRouter(supabase) {
   router.post('/', async (req, res, next) => {
     try {
       const body = ClientSchema.parse(req.body);
-      const { data: countData } = await supabase.from('clients').select('*', { count: 'exact', head: true });
-      const nextNum = (countData?.count || 0) + 1;
+      const { count } = await supabase.from('clients').select('*', { count: 'exact', head: true });
+      const nextNum = (count || 0) + 1;
       const displayId = `FS${String(nextNum).padStart(4, '0')}`;
 
       const { data, error } = await supabase
