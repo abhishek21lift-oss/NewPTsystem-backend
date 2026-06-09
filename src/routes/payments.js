@@ -41,13 +41,13 @@ export function createPaymentsRouter(supabase) {
         .single();
       if (error) throw error;
 
-      supabase.from('activities').insert({
+      try { await supabase.from('activities').insert({
         actor_type: 'system',
         action: 'payment',
         description: `Payment of ₹${body.amount.toLocaleString('en-IN')} received`,
         icon: '💰',
         color: 'var(--green-muted)',
-      }).select().then(() => {}).catch(() => {});
+      }); } catch {};
 
       res.status(201).json(data);
     } catch (err) {

@@ -294,13 +294,13 @@ async function seed() {
       sessionDate.setDate(today.getDate() + ((day + 7 - today.getDay()) % 7));
       sessionDate.setHours(hour, 0, 0, 0);
 
-      await supabase.from('sessions').insert({
+      try { await supabase.from('sessions').insert({
         client_id: client.id,
         trainer_id: tid,
         enrollment_id: enr.enrollment.id,
         scheduled_at: sessionDate.toISOString(),
         status: 'scheduled',
-      }).catch(() => {});
+      }); } catch {};
     }
   }
 
