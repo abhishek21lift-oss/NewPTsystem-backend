@@ -58,8 +58,9 @@ export function createClientsRouter(supabase) {
   router.post('/', async (req, res, next) => {
     try {
       const body = ClientSchema.parse(req.body);
-      const { count } = await supabase.from('clients').select('*', { count: 'exact', head: true });
-      const nextNum = (count || 0) + 1;
+      const { data: maxData } = await supabase.from('clients').select('display_id').order('display_id', { ascending: false }).limit(1);
+      const lastId = maxData?.[0]?.display_id || 'FS0000';
+      const nextNum = parseInt(lastId.replace('FS', ''), 10) + 1;
       const displayId = `FS${String(nextNum).padStart(4, '0')}`;
 
       const { data, error } = await supabase
