@@ -103,6 +103,14 @@ export function createClientsRouter(supabase) {
         .from('clients')
         .update({ deleted_at: new Date().toISOString() })
         .eq('id', req.params.id);
+      if (error?.code === 'PGRST204') {
+        const { error: e2 } = await supabase
+          .from('clients')
+          .delete()
+          .eq('id', req.params.id);
+        if (e2) throw e2;
+        return res.json({ message: 'Client deleted' });
+      }
       if (error) throw error;
       res.json({ message: 'Client soft-deleted' });
     } catch (err) {

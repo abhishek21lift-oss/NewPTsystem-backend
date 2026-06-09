@@ -83,6 +83,14 @@ export function createMembershipPlansRouter(supabase) {
         .from('membership_plans')
         .update({ deleted_at: new Date().toISOString() })
         .eq('id', req.params.id);
+      if (error?.code === 'PGRST204') {
+        const { error: e2 } = await supabase
+          .from('membership_plans')
+          .delete()
+          .eq('id', req.params.id);
+        if (e2) throw e2;
+        return res.json({ success: true, message: 'Plan deleted' });
+      }
       if (error) throw error;
       res.json({ success: true, message: 'Plan soft-deleted' });
     } catch (err) {
