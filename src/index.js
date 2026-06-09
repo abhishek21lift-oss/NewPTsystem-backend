@@ -14,6 +14,7 @@ import { createPayoutsRouter } from './routes/payouts.js';
 import { createMembershipPlansRouter } from './routes/membership-plans.js';
 import { createAuthRouter } from './routes/auth.js';
 import { errorHandler } from './middleware/errorHandler.js';
+import { createAuthMiddleware } from './middleware/auth.js';
 import { createSupabaseClient } from './lib/supabase.js';
 
 const app = express();
@@ -38,15 +39,17 @@ const limiter = rateLimit({
 });
 app.use('/api/', limiter);
 
+const authMw = createAuthMiddleware(supabase);
+
 app.use('/api/auth', createAuthRouter(supabase));
-app.use('/api/clients', createClientsRouter(supabase));
-app.use('/api/trainers', createTrainersRouter(supabase));
-app.use('/api/enrollments', createEnrollmentsRouter(supabase));
-app.use('/api/payments', createPaymentsRouter(supabase));
-app.use('/api/sessions', createSessionsRouter(supabase));
-app.use('/api/analytics', createAnalyticsRouter(supabase));
-app.use('/api/payouts', createPayoutsRouter(supabase));
-app.use('/api/membership-plans', createMembershipPlansRouter(supabase));
+app.use('/api/clients', authMw, createClientsRouter(supabase));
+app.use('/api/trainers', authMw, createTrainersRouter(supabase));
+app.use('/api/enrollments', authMw, createEnrollmentsRouter(supabase));
+app.use('/api/payments', authMw, createPaymentsRouter(supabase));
+app.use('/api/sessions', authMw, createSessionsRouter(supabase));
+app.use('/api/analytics', authMw, createAnalyticsRouter(supabase));
+app.use('/api/payouts', authMw, createPayoutsRouter(supabase));
+app.use('/api/membership-plans', authMw, createMembershipPlansRouter(supabase));
 
 app.get('/api/health', (_, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString(), version: '2.0.0' });

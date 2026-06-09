@@ -17,13 +17,14 @@ export function createClientsRouter(supabase) {
       const { search, gender, status, page = 1, limit = 200 } = req.query;
       let query = supabase
         .from('clients')
-        .select('*, enrollments!inner(*, membership_plans(*), trainers(*), payments(*))', { count: 'exact' });
+        .select('*, enrollments!inner(*, membership_plans(*), trainers(*), payments(*))', { count: 'exact' })
+        .is('deleted_at', null);
 
       if (search) {
         query = query.or(`full_name.ilike.%${search}%,display_id.ilike.%${search}%`);
       }
       if (gender) {
-        query = eq('gender', gender);
+        query = query.eq('gender', gender);
       }
       if (status) {
         query = query.eq('enrollments.status', status);
@@ -84,6 +85,7 @@ export function createClientsRouter(supabase) {
         .from('clients')
         .update(body)
         .eq('id', req.params.id)
+        .is('deleted_at', null)
         .select()
         .single();
       if (error) throw error;
@@ -99,9 +101,12 @@ export function createClientsRouter(supabase) {
 
   router.delete('/:id', async (req, res, next) => {
     try {
-      const { error } = await supabase.from('clients').delete().eq('id', req.params.id);
+      const { error } = await supabase
+        .from('clients')
+        .update({ deleted_at: new Date().toISOString() })
+        .eq('id', req.params.id);
       if (error) throw error;
-      res.json({ message: 'Client deleted' });
+      res.json({ message: 'Client soft-deleted' });
     } catch (err) {
       next(err);
     }

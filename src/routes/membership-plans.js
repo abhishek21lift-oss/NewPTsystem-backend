@@ -18,6 +18,7 @@ export function createMembershipPlansRouter(supabase) {
       const { data, error } = await supabase
         .from('membership_plans')
         .select('*, enrollments(count)')
+        .is('deleted_at', null)
         .order('months_count');
       if (error) throw error;
       res.json(data);
@@ -32,6 +33,7 @@ export function createMembershipPlansRouter(supabase) {
         .from('membership_plans')
         .select('*')
         .eq('id', req.params.id)
+        .is('deleted_at', null)
         .single();
       if (error) throw error;
       res.json(data);
@@ -62,6 +64,7 @@ export function createMembershipPlansRouter(supabase) {
         .from('membership_plans')
         .update(body)
         .eq('id', req.params.id)
+        .is('deleted_at', null)
         .select()
         .single();
       if (error) throw error;
@@ -75,10 +78,10 @@ export function createMembershipPlansRouter(supabase) {
     try {
       const { error } = await supabase
         .from('membership_plans')
-        .delete()
+        .update({ deleted_at: new Date().toISOString() })
         .eq('id', req.params.id);
       if (error) throw error;
-      res.json({ success: true });
+      res.json({ success: true, message: 'Plan soft-deleted' });
     } catch (err) {
       next(err);
     }
